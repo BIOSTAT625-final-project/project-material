@@ -1,3 +1,6 @@
 # Project Material
-This is the project material.
+This repository contains all the project materials.
+
+You can share everything you want! ^-^
+
 
