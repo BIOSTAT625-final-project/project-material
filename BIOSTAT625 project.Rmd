@@ -1,0 +1,177 @@
+---
+title: "BIOSTAT625 project test"
+author: "Hengde Ouyang"
+date: "2022-11-27"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+---
+
+# Read the Data and Remove the row contains NA
+```{r}
+raw_data = read.csv("raw1.csv")
+# Remove the row contains NA
+complete_data = na.omit(raw_data)
+```
+
+# Transform some of the data
+```{r,warning=FALSE}
+transform_data = complete_data
+# If the person is female, we code 0
+transform_data$Sex = ifelse(transform_data$Sex=="Female",0,1)
+
+# Survival months to numeric, and remove the unknown
+# This is our response variable
+transform_data$Survival.months = as.numeric(transform_data$Survival.months)
+transform_data = na.omit(transform_data)
+
+# Remove "years" in Single Age
+# Code, if you want to remove:
+# pattern = "years"
+# transform_data$Age.recode.with.single.ages.and.85.  #=gsub(transform_data$Age.recode.with.single.ages.and.85.,pattern=pattern,
+# replacement = "")
+
+# Tumor Size to numeric, and remove the Blank
+transform_data$CS.tumor.size..2004.2015. = as.numeric(transform_data$CS.tumor.size..2004.2015.)
+transform_data = na.omit(transform_data)
+
+# Tumor number to numeric, and remove the Blank
+transform_data$Total.number.of.in.situ.malignant.tumors.for.patient = as.numeric(transform_data$Total.number.of.in.situ.malignant.tumors.for.patient)
+transform_data = na.omit(transform_data)
+
+### Silly Code
+transform_data$Age.recode.with..1.year.olds = factor(transform_data$Age.recode.with..1.year.olds)
+transform_data$Primary.Site...labeled = factor(transform_data$Primary.Site...labeled)
+transform_data$Derived.AJCC.Stage.Group..6th.ed..2004.2015. = factor(transform_data$Derived.AJCC.Stage.Group..6th.ed..2004.2015.)
+transform_data$ER.Status.Recode.Breast.Cancer..1990.. = factor(transform_data$ER.Status.Recode.Breast.Cancer..1990..)
+transform_data$PR.Status.Recode.Breast.Cancer..1990.. = factor(transform_data$PR.Status.Recode.Breast.Cancer..1990..)
+transform_data$Survival.months.flag = factor(transform_data$Survival.months.flag)
+transform_data$Race.ethnicity = factor(transform_data$Race.ethnicity)
+
+
+```
+
+
+# Summary Statistics
+```{r}
+summary(transform_data)
+```
+
+
+# Principal Components Regression
+Suppose we have the original predictors $X_{1},X_{2},...,X_{p}$,let 
+$Z_{1},Z_{2},...,Z_{p}$ represent $M<p$ linear combinations of our original
+p predictors, that is:
+$$Z_{m}=\sum_{j = 1}^{p} \phi_{jm}X_{j}$$
+
+
+We show an example of Princinpal Components Regression:
+```{r,warning=FALSE}
+#Before running the code, you need the "pls" and "ISLR" package
+#install.packages("pls")
+library(pls)
+library(ISLR)
+
+```
+
+
+```{r}
+set.seed(2)
+Hitters =na.omit(Hitters)
+pcr.fit=pcr(Salary~.,data=Hitters, scale=TRUE,
+validation ="CV")
+summary (pcr.fit)
+```
+
+```{r}
+validationplot(pcr.fit,val.type="MSEP")
+```
+
+training and testing data:
+```{r}
+set.seed(1)
+train=sample(c(TRUE ,FALSE), nrow(Hitters ),rep=TRUE)
+test=(!train)
+
+
+x=model.matrix(Salary~.,Hitters)[,-1]
+y=Hitters$Salary
+
+y.test=y[test]
+```
+
+
+```{r}
+set.seed(2)
+pcr.fit=pcr(Salary~.,data=Hitters,subset=train,scale=TRUE,
+validation ="CV")
+pcr.pred=predict (pcr.fit,x[test ,],ncomp =7)
+mean((pcr.pred -y.test)^2)
+pcr.pred=predict (pcr.fit,x[test ,],ncomp =2)
+mean((pcr.pred -y.test)^2)
+pcr.pred=predict (pcr.fit,x[test ,],ncomp =1)
+mean((pcr.pred -y.test)^2)
+```
+
+
+
+
+# Random Forest
+
+
+
+
+```{r,warning=FALSE}
+#Before running the code, you need the "randomForest" package
+#install.packages("randomForest")
+library(randomForest)
+
+```
+
+
+```{r}
+set.seed(3)
+bag.Hitters =  randomForest(Salary~.,data=Hitters, subset=train,
+mtry=13,importance =TRUE)
+
+yhat.bag = predict(bag.Hitters,newdata=Hitters[test,])
+mean((yhat.bag -y.test)^2)
+```
+
+# Comparision of time
+```{r}
+system.time({
+pcr.fit=pcr(Salary~.,data=Hitters,subset=train,scale=TRUE,
+validation ="CV")
+})
+```
+
+```{r}
+system.time({
+bag.Hitters =  randomForest(Salary~.,data=Hitters, subset=train,
+mtry=13,importance =TRUE)
+})
+```
+
+
+# Try to use future package
+```{r}
+library(future)
+plan(multisession)
+set.seed(3)
+system.time({
+bag.Hitters2 =  future(randomForest(Salary~.,data=Hitters, subset=train,
+mtry=13,importance =TRUE),seed = TRUE)
+})
+```
+
+```{r}
+yhat.bag2 = predict(value(bag.Hitters2),newdata=Hitters[test,])
+mean((yhat.bag2 -y.test)^2)
+```
+
+
+
+
+
+
