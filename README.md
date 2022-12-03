@@ -1,2 +1,3 @@
-# project_material
-This is the project_material
+# Project Material
+This is the project material.
+
